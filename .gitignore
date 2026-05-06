@@ -217,3 +217,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Ensemble Project Specifics ---
+artifacts/
+catboost_info/
+notebooks/catboost_info/
+ensemble_project.egg-info/
+mlflow.db
+notebooks/mlflow.db
+mlruns/
+data/*.csv
+.vscode/
