@@ -13,7 +13,7 @@ Data Requirements: All CSV files (e.g., diabetic_data.csv, test.csv) MUST be sto
 Preprocessing: The system automatically drops non-predictive IDs (encounter_id, patient_nbr), weight (high sparsity), and max_glu_serum to maintain model integrity.
 
 🏗️ Project Structure
-Based on the modular architecture shown in image_67e971.png, the project is organized as follows:
+Based on the modular architecture , the project is organized as follows:
 
 Plaintext
 ENSEMBLE_PROJECT/
@@ -82,7 +82,7 @@ cd ENSEMBLE_PROJECT
 pip install -r requirements.txt
 pip install -e .
 2. Run the Pipelines
-Bash
+CMD
 # Train a model
 python src/components/model_trainer.py --model catboost
 
