@@ -258,12 +258,16 @@ python src/components/model_trainer.py --data_file diabetic_data.csv --model ran
 
 ### 2. Evaluate & Explain
 
+Ensure the test file is placed in /data folder and also the model has been trained via model_trainer.py earlier.
+
 ```bash
 # Load trained model and evaluate on test set
 python src/components/model_evaluator.py --model catboost --test_file test.csv --row 0
 ```
 
 ### 3. Batch Predict
+
+Ensure the test file is placed in /data folder and also the model has been trained via model_trainer.py earlier.
 
 ```bash
 # Generate predictions and LIME explanations
