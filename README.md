@@ -249,31 +249,25 @@ data/
 python src/components/model_trainer.py --data_file diabetic_data.csv --model catboost --trials 1 --exp_name catboost_1
 
 # Train XGBoost
-python src/components/model_trainer.py --model xgboost --trials 1 --exp_name xgboost
+python src/components/model_trainer.py --data_file diabetic_data.csv --model xgboost --trials 1 --exp_name xgboost
 
 # Train other models
-python src/components/model_trainer.py --model logistic_regression --trials 1 --exp_name xgboost
-python src/components/model_trainer.py --model random_forest --trials 1 --exp_name xgboost
+python src/components/model_trainer.py --data_file diabetic_data.csv --model logistic_regression --trials 1 --exp_name xgboost
+python src/components/model_trainer.py --data_file diabetic_data.csv --model random_forest --trials 1 --exp_name xgboost
 ```
 
 ### 2. Evaluate & Explain
 
 ```bash
 # Load trained model and evaluate on test set
-python src/components/model_evaluator.py \
-  --model catboost \
-  --test_file test.csv \
-  --row 0
+python src/components/model_evaluator.py --model catboost --test_file test.csv --row 0
 ```
 
 ### 3. Batch Predict
 
 ```bash
 # Generate predictions and LIME explanations
-python src/pipeline/predict_pipeline.py \
-  --model xgboost \
-  --file test.csv \
-  --row 10
+python src/pipeline/predict_pipeline.py --model xgboost --file test.csv --row 10
 ```
 
 ---
@@ -287,10 +281,7 @@ python src/pipeline/predict_pipeline.py \
 python src/components/model_trainer.py --model catboost
 
 # Evaluate on first patient
-python src/components/model_evaluator.py \
-  --model catboost \
-  --test_file test.csv \
-  --row 0
+python src/components/model_evaluator.py --model catboost --test_file test.csv --row 0
 
 # Output: metrics.json, LIME report in artifacts/
 ```
