@@ -70,8 +70,7 @@ readmitted (Categorical)
 ensemble_project/
 ├── 📁 artifacts/                    # Model outputs
 │   ├── models/                      #   ├─ Trained .pkl models
-│   ├── preprocessors/               #   ├─ Scalers & encoders
-│   ├── lime_reports/                #   └─ HTML explanations
+│   ├── plots/                       #   ├─ plots
 │   └── predict/                     #   └─ Batch predictions (timestamped)
 │
 ├── 📁 data/                         # [REQUIRED] Input data directory
@@ -253,14 +252,14 @@ data/
 
 ```bash
 # Train CatBoost (recommended)
-python src/components/model_trainer.py --model catboost
+python src/components/model_trainer.py --model catboost --trials 1 --exp_name catboost_1
 
 # Train XGBoost
-python src/components/model_trainer.py --model xgboost
+python src/components/model_trainer.py --model xgboost --trials 1 --exp_name xgboost
 
 # Train other models
-python src/components/model_trainer.py --model logistic_regression
-python src/components/model_trainer.py --model random_forest
+python src/components/model_trainer.py --model logistic_regression --trials 1 --exp_name xgboost
+python src/components/model_trainer.py --model random_forest --trials 1 --exp_name xgboost
 ```
 
 ### 2. Evaluate & Explain
@@ -302,22 +301,6 @@ python src/components/model_evaluator.py \
 # Output: metrics.json, LIME report in artifacts/
 ```
 
-### Example 2: Compare Multiple Models
-
-```bash
-# Train all models
-for model in catboost xgboost logistic_regression random_forest; do
-  python src/components/model_trainer.py --model $model
-done
-
-# Evaluate each
-for model in catboost xgboost logistic_regression random_forest; do
-  python src/components/model_evaluator.py \
-    --model $model \
-    --test_file test.csv \
-    --row 0
-done
-```
 
 ### Example 3: Generate Batch Predictions
 
@@ -370,7 +353,7 @@ Confidence: 87%
 
 ### Accessing Reports
 
-All HTML reports are saved in: `artifacts/lime_reports/`
+All HTML reports are saved in: `artifacts/predict/`
 
 Open in browser to interact with visualizations.
 
@@ -446,22 +429,6 @@ Contributions are welcome! Please:
 3. **Commit** your changes (`git commit -am 'Add new feature'`)
 4. **Push** to the branch (`git push origin feature/your-feature`)
 5. **Open** a Pull Request
-
-### Development Setup
-
-```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-pytest tests/
-
-# Format code
-black src/
-
-# Lint code
-flake8 src/
-```
 
 ---
 
