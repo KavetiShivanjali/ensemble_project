@@ -217,12 +217,6 @@ cd ensemble_project
 ### Step 2: Create Virtual Environment
 
 ```bash
-# Using venv
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or
-venv\Scripts\activate  # Windows
-
 # Using conda
 conda create -n ensemble python=3.13.7
 conda activate ensemble
