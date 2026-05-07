@@ -4,7 +4,8 @@ import sys
 import argparse
 from dataclasses import dataclass
 
-
+import numpy as np
+from fastapi import params
 from sklearn.preprocessing import LabelEncoder
 from src.components.data_ingestion import DataIngestion
 from src.components.data_transformation import DataTransformation
@@ -12,13 +13,14 @@ from src.exception import CustomException
 from src.logger import logging
 from src.utils import save_object, evaluate_model
 from catboost import CatBoostClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, recall_score
+from sklearn.metrics import accuracy_score, average_precision_score, classification_report, confusion_matrix, recall_score
 import mlflow
 import optuna
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import StratifiedKFold
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -36,127 +38,107 @@ class ModelTrainer:
         self.model_trainer_config = ModelTrainerConfig()
 
     def initiate_model_trainer(self, train_array, val_array, test_array, model_type='catboost', n_trials=20, experiment_name='Model_Search'):
-        try:
-            logging.info(f"Initiating training for: {model_type}")
-            mlflow.set_experiment(experiment_name)
+            try:
+                logging.info(f"Initiating training for: {model_type} with 5-Fold Cross Validation")
+                mlflow.set_experiment(experiment_name)
 
-            X_train, y_train = train_array[:, :-1], train_array[:, -1]
-            X_val, y_val = val_array[:, :-1], val_array[:, -1]
-            X_test, y_test = test_array[:, :-1], test_array[:, -1]
-            le = LabelEncoder()
-            y_train = le.fit_transform(y_train)
-            y_val = le.transform(y_val)
-            y_test = le.transform(y_test)
+                # Separate Features and Target
+                X_train, y_train = train_array[:, :-1], train_array[:, -1]
+                X_test, y_test = test_array[:, :-1], test_array[:, -1]
+                
+                # Label Encoding
+                le = LabelEncoder()
+                y_train = le.fit_transform(y_train)
+                y_test = le.transform(y_test)
 
-            def objective(trial):
-                with mlflow.start_run(run_name=f"{model_type}_trial_{trial.number}", nested=True):
-                    
-                    # 1. Capture Hyperparameters based on model_type argument
+                def objective(trial):
+                    # Move StratifiedKFold inside the objective to get CV-based scores
+                    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+                    cv_recalls = []
+                    cv_accuracies = []
+
+                    # Define Parameters
                     if model_type == 'logistic_regression':
-                        params = {"C": trial.suggest_float("C", 1e-3, 5.0, log=True),
-                                "solver": "lbfgs",  # Changed from 'liblinear' to 'lbfgs'
-                                "class_weight": "balanced", # Explicitly handle multiple classes
-                                "max_iter": 1000}
-                        model = LogisticRegression(**params)
-
+                        params = {"C": trial.suggest_float("C", 1e-3, 5.0, log=True), "solver": "lbfgs", "class_weight": "balanced", "max_iter": 1000}
                     elif model_type == 'random_forest':
-                        params = {
-                            "n_estimators": trial.suggest_int("n_estimators", 50, 200),
-                            "max_depth": trial.suggest_int("max_depth", 5, 20),
-                            "class_weight": "balanced"
-                        }
-                        model = RandomForestClassifier(**params)
-
+                        params = {"n_estimators": trial.suggest_int("n_estimators", 50, 200), "max_depth": trial.suggest_int("max_depth", 5, 20), "class_weight": "balanced"}
                     elif model_type == 'xgboost':
-                        
-                        params = {
-                            "max_depth": trial.suggest_int("max_depth", 3, 10),
-                            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.1),
-                            "scale_pos_weight": trial.suggest_float("scale_pos_weight", 1, 5)
-                        }
-                        model = XGBClassifier(**params)
-
+                        params = {"max_depth": trial.suggest_int("max_depth", 3, 10), "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.1), "scale_pos_weight": trial.suggest_float("scale_pos_weight", 1, 5)}
                     elif model_type == 'catboost':
-                        params = {
-                            "depth": trial.suggest_int("depth", 4, 10),
-                            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.1),
-                            "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1.0, 4.0), # Fixed: Standard regularization value
-                            "auto_class_weights": "Balanced" , # Let CatBoost handle class imbalance automatically
-                            "verbose": False
-                        }
-                        model = CatBoostClassifier(**params)
-
+                        params = {"depth": trial.suggest_int("depth", 4, 10), "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.1), "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1.0, 4.0), "auto_class_weights": "Balanced", "verbose": False}
                     elif model_type == 'decision_tree':
-                        params = {"max_depth": trial.suggest_int("max_depth", 3, 15), 
-                                  "class_weight": "balanced"}
-                        model = DecisionTreeClassifier(**params)
+                        params = {"max_depth": trial.suggest_int("max_depth", 3, 15), "class_weight": "balanced"}
 
-                    # 2. Train and Calculate Metrics
-                    model.fit(X_train, y_train)
-                    y_pred = model.predict(X_val)
-                    
-                    acc = accuracy_score(y_val, y_pred)
-                    # We target recall for class 0 ('<30') specifically as requested
-                    rec_lt30 = recall_score(y_val, y_pred, labels=[0], average='macro')
+                    # Start MLflow nested run for the trial
+                    with mlflow.start_run(run_name=f"{model_type}_trial_{trial.number}", nested=True):
+                        # Cross-Validation Loop
+                        for train_idx, val_idx in skf.split(X_train, y_train):
+                            # Convert to DataFrame if they are currently numpy arrays for slicing
+                            X_t, X_v = X_train[train_idx], X_train[val_idx]
+                            y_t, y_v = y_train[train_idx], y_train[val_idx]
 
-                    mlflow.log_params(params)
-                    mlflow.log_metrics({"accuracy": acc, "recall_lt30": rec_lt30})
+                            # Initialize and fit
+                            if model_type == 'catboost': model = CatBoostClassifier(**params)
+                            elif model_type == 'xgboost': model = XGBClassifier(**params)
+                            elif model_type == 'logistic_regression': model = LogisticRegression(**params)
+                            elif model_type == 'random_forest': model = RandomForestClassifier(**params)
+                            else: model = DecisionTreeClassifier(**params)
 
-                    # 3. Objective: Prioritize Recall (0.7 weight) over Accuracy (0.3 weight)
-                    return 0.7 * rec_lt30 + 0.3 * acc
+                            model.fit(X_t, y_t)
+                            y_pred = model.predict(X_v)
 
-            # Run Optuna Study
-            study = optuna.create_study(direction="maximize")
-            study.optimize(objective, n_trials=n_trials)
+                            cv_accuracies.append(accuracy_score(y_v, y_pred))
+                            cv_recalls.append(recall_score(y_v, y_pred, labels=[0], average='macro'))
 
-            # Logging best results for the artifacts
-            logging.info(f"Best params for {model_type}: {study.best_params}")
+                        # Calculate Mean CV Metrics
+                        mean_acc = np.mean(cv_accuracies)
+                        mean_rec = np.mean(cv_recalls)
 
-            # 1. Identify the Best Trial
-            logging.info(f"Best Trial Score: {study.best_value}")
-            best_params = study.best_params
-            
-            # Remove the 'classifier' key from params so it can be passed to the model constructor
-            model_name = model_type
-            
-            # 2. Re-initialize the Best Model Type
-            if model_name == 'logistic_regression':
-                best_model = LogisticRegression(**best_params)
-            elif model_name == 'random_forest':
-                best_model = RandomForestClassifier(**best_params)
-            elif model_name == 'xgboost':
-                best_model = XGBClassifier(**best_params)
-            elif model_name == 'catboost':
-                best_model = CatBoostClassifier(**best_params,  verbose=False)
-            elif model_name == 'decision_tree':
-                best_model = DecisionTreeClassifier(**best_params)
+                        mlflow.log_params(params)
+                        mlflow.log_metrics({"cv_accuracy": mean_acc, "cv_recall_lt30": mean_rec})
 
-            # 3. Final Fit on the full training array
-            logging.info(f"Re-training the best model: {model_name}")
-            best_model.fit(X_train, y_train)
+                        logging.info(f"Trial {trial.number} - CV Accuracy: {mean_acc:.4f}, CV Recall (<30 days): {mean_rec:.4f}")
+                        logging.info(f"Trial {trial.number} - Parameters: {params}")
+                        logging.info(f"Trial {trial.number} - Classification Report:\n{classification_report(y_v, y_pred)}")
+                        logging.info(f"Trial {trial.number} - Confusion Matrix:\n{confusion_matrix(y_v, y_pred)}")
+                        logging.info(f"Trial {trial.number} - Weighted Objective: {0.7 * mean_rec + 0.3 * mean_acc:.4f}")
 
-            y_pred = best_model.predict(X_test)
-            acc_score = accuracy_score(y_test, y_pred)
-            class_report = classification_report(y_test, y_pred)
-            conf_matrix = confusion_matrix(y_test, y_pred)
+                        # Weighted Objective: 70% Recall, 30% Accuracy
+                        return 0.7 * mean_rec + 0.3 * mean_acc
 
-            logging.info(f"Final evaluation on test set for best model ({model_name}):")
-            logging.info(f"Accuracy Score: {acc_score}")
-            logging.info(f"Classification Report:\n{class_report}")
-            logging.info(f"Confusion Matrix:\n{conf_matrix}")
+                # Run Optuna Study
+                study = optuna.create_study(direction="maximize")
+                study.optimize(objective, n_trials=n_trials)
 
-            # 4. Save as Pickle in Artifacts
-            # This uses the path defined in your DataTransformationConfig (e.g., 'artifacts/model.pkl')
-            save_object(
-                file_path=self.model_trainer_config.get_model_path(model_name),
-                obj=best_model
-            )
-            
-            logging.info(f"Best model ({model_name}) saved successfully at {self.model_trainer_config.get_model_path(model_name)}")
-            return self.model_trainer_config.get_model_path(model_name)
+                logging.info(f"Best Trial Score: {study.best_value}")
+                best_params = study.best_params
+                
+                # Re-initialize Best Model with winning parameters
+                if model_type == 'logistic_regression': best_model = LogisticRegression(**best_params)
+                elif model_type == 'random_forest': best_model = RandomForestClassifier(**best_params)
+                elif model_type == 'xgboost': best_model = XGBClassifier(**best_params)
+                elif model_type == 'catboost': best_model = CatBoostClassifier(**best_params, verbose=False)
+                elif model_type == 'decision_tree': best_model = DecisionTreeClassifier(**best_params)
 
-        except Exception as e:
-            raise CustomException(e, sys)
+                # Final Fit on the full training set
+                logging.info(f"Re-training the best {model_type} model on full training data")
+                best_model.fit(X_train, y_train)
+
+                # Final Evaluation on the unseen Test Set
+                y_pred_test = best_model.predict(X_test)
+                logging.info(f"Test Accuracy: {accuracy_score(y_test, y_pred_test)}")
+                logging.info(f"Test Confusion Matrix:\n{confusion_matrix(y_test, y_pred_test)}")
+
+                # Save Object
+                save_object(
+                    file_path=self.model_trainer_config.get_model_path(model_type),
+                    obj=best_model
+                )
+                
+                return self.model_trainer_config.get_model_path(model_type)
+
+            except Exception as e:
+                raise CustomException(e, sys)
 
    
 
