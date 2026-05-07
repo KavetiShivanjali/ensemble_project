@@ -203,7 +203,7 @@ Batch processing and final predictions.
 ## 🚀 Installation
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.11+
 - Git
 - pip or conda
 
@@ -252,7 +252,7 @@ data/
 
 ```bash
 # Train CatBoost (recommended)
-python src/components/model_trainer.py --model catboost --trials 1 --exp_name catboost_1
+python src/components/model_trainer.py --data_file diabetic_data.csv --model catboost --trials 1 --exp_name catboost_1
 
 # Train XGBoost
 python src/components/model_trainer.py --model xgboost --trials 1 --exp_name xgboost
