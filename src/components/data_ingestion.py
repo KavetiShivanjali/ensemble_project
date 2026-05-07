@@ -21,6 +21,8 @@ import math
 from dataclasses import dataclass
 from scipy.stats.mstats import winsorize
 from datetime import datetime  
+import warnings
+warnings.filterwarnings("ignore")
 
 @dataclass
 class DataIngestionConfig:

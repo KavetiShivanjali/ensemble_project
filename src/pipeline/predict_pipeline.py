@@ -9,6 +9,8 @@ from datetime import datetime
 from src.utils import load_object
 from src.exception import CustomException
 from src.logger import logging
+import warnings
+warnings.filterwarnings("ignore")
 
 class PredictPipeline:
     def __init__(self):
@@ -38,7 +40,7 @@ class PredictPipeline:
             data_path = os.path.join("data", test_file)
             df = pd.read_csv(data_path)
             
-            model_path = os.path.join("artifacts", f"{model_type}_model.pkl")
+            model_path = os.path.join("artifacts\model", f"{model_type}_model.pkl")
             preprocessor_path = os.path.join("artifacts", "preprocessor.pkl")
             
             model = load_object(file_path=model_path)

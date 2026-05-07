@@ -23,7 +23,7 @@ cycler==0.12.1
 databricks-sdk==0.106.0
 dill==0.4.1
 docker==7.1.0
--e git+https://github.com/KavetiShivanjali/ensemble_project.git@252b9408fc0e0e00dcb220ad81100cc41940bfc7#egg=ensemble_project
+-e .
 fastapi==0.136.1
 Flask==3.1.3
 flask-cors==6.0.2

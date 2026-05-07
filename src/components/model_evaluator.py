@@ -10,6 +10,8 @@ from src.utils import load_object
 from src.exception import CustomException
 from src.logger import logging
 from sklearn.preprocessing import LabelEncoder
+import warnings
+warnings.filterwarnings("ignore")
 
 class ModelEvaluator:
     def __init__(self):
@@ -52,7 +54,7 @@ class ModelEvaluator:
             y_test = le.fit_transform(y_test)
 
             # 2. Load Artifacts
-            model_path = os.path.join("artifacts", f"{model_type}_model.pkl")
+            model_path = os.path.join("artifacts\model", f"{model_type}_model.pkl")
             preprocessor_path = os.path.join("artifacts", "preprocessor.pkl")
             
             model = load_object(file_path=model_path)

@@ -4,6 +4,7 @@ import sys
 import argparse
 from dataclasses import dataclass
 
+
 from sklearn.preprocessing import LabelEncoder
 from src.components.data_ingestion import DataIngestion
 from src.components.data_transformation import DataTransformation
@@ -18,12 +19,16 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.tree import DecisionTreeClassifier
+import warnings
+warnings.filterwarnings("ignore")
 
 
 @dataclass
 class ModelTrainerConfig:
     def get_model_path(self, model_name):
-        return os.path.join('artifacts', f"{model_name}_model.pkl")
+        output_dir = os.path.join("artifacts", "model")
+        os.makedirs(output_dir, exist_ok=True)
+        return os.path.join('artifacts\model', f"{model_name}_model.pkl")
     trained_model_file_path: str = ''
 
 class ModelTrainer:
@@ -148,7 +153,7 @@ class ModelTrainer:
             )
             
             logging.info(f"Best model ({model_name}) saved successfully at {self.model_trainer_config.get_model_path(model_name)}")
-            return self.model_trainer_config.trained_model_file_path
+            return self.model_trainer_config.get_model_path(model_name)
 
         except Exception as e:
             raise CustomException(e, sys)
