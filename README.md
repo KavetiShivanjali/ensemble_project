@@ -224,7 +224,7 @@ source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate  # Windows
 
 # Using conda
-conda create -n ensemble python=3.10
+conda create -n ensemble python=3.13.7
 conda activate ensemble
 ```
 
