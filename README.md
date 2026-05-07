@@ -217,14 +217,8 @@ cd ensemble_project
 ### Step 2: Create Virtual Environment
 
 ```bash
-# Using venv
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or
-venv\Scripts\activate  # Windows
-
 # Using conda
-conda create -n ensemble python=3.10
+conda create -n ensemble python=3.13.7
 conda activate ensemble
 ```
 
@@ -255,31 +249,29 @@ data/
 python src/components/model_trainer.py --data_file diabetic_data.csv --model catboost --trials 1 --exp_name catboost_1
 
 # Train XGBoost
-python src/components/model_trainer.py --model xgboost --trials 1 --exp_name xgboost
+python src/components/model_trainer.py --data_file diabetic_data.csv --model xgboost --trials 1 --exp_name xgboost
 
 # Train other models
-python src/components/model_trainer.py --model logistic_regression --trials 1 --exp_name xgboost
-python src/components/model_trainer.py --model random_forest --trials 1 --exp_name xgboost
+python src/components/model_trainer.py --data_file diabetic_data.csv --model logistic_regression --trials 1 --exp_name xgboost
+python src/components/model_trainer.py --data_file diabetic_data.csv --model random_forest --trials 1 --exp_name xgboost
 ```
 
 ### 2. Evaluate & Explain
 
+Ensure the test file is placed in /data folder and also the model has been trained via model_trainer.py earlier.
+
 ```bash
 # Load trained model and evaluate on test set
-python src/components/model_evaluator.py \
-  --model catboost \
-  --test_file test.csv \
-  --row 0
+python src/components/model_evaluator.py --model catboost --test_file test.csv --row 0
 ```
 
 ### 3. Batch Predict
 
+Ensure the test file is placed in /data folder and also the model has been trained via model_trainer.py earlier.
+
 ```bash
 # Generate predictions and LIME explanations
-python src/pipeline/predict_pipeline.py \
-  --model xgboost \
-  --file test.csv \
-  --row 10
+python src/pipeline/predict_pipeline.py --model xgboost --file test.csv --row 10
 ```
 
 ---
@@ -293,10 +285,7 @@ python src/pipeline/predict_pipeline.py \
 python src/components/model_trainer.py --model catboost
 
 # Evaluate on first patient
-python src/components/model_evaluator.py \
-  --model catboost \
-  --test_file test.csv \
-  --row 0
+python src/components/model_evaluator.py --model catboost --test_file test.csv --row 0
 
 # Output: metrics.json, LIME report in artifacts/
 ```
